@@ -319,6 +319,67 @@
             border-radius: 50%;
             box-shadow: 0 0 6px #10b981;
         }
+        
+        /* Solar/Battery LED styles */
+        .led-yellow {
+            background: radial-gradient(circle at 30% 30%, #fef08a, #eab308);
+            box-shadow: 0 0 8px #eab308, 0 0 16px #eab308, inset 0 0 4px rgba(255,255,255,0.4);
+        }
+        
+        /* Charging animation */
+        .charging-animation {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .charging-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+            animation: chargingWave 1.5s linear infinite;
+        }
+        
+        @keyframes chargingWave {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Battery bar */
+        .battery-bar {
+            transition: all 0.3s ease;
+        }
+        
+        /* Decimal point for displays */
+        .decimal-point {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #27272a;
+            transition: all 0.3s ease;
+            margin-left: 4px;
+            display: inline-block;
+            vertical-align: bottom;
+            margin-bottom: 8px;
+        }
+        
+        .decimal-point.active {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981, 0 0 16px #10b981;
+        }
+        
+        /* Sun/Moon icons animation */
+        .sun-icon {
+            animation: sunPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes sunPulse {
+            0%, 100% { filter: drop-shadow(0 0 4px #eab308); }
+            50% { filter: drop-shadow(0 0 12px #eab308); }
+        }
     </style>
 </head>
 <body class="text-zinc-300 p-3 md:p-5">
@@ -348,6 +409,12 @@
                     <span class="text-emerald-400 text-sm font-medium tracking-wide">SYSTEM ACTIVE</span>
                 </div>
                 
+                <!-- Power Source Badge -->
+                <div id="power-badge" class="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <i id="power-icon" data-lucide="sun" class="w-4 h-4 text-yellow-400 sun-icon"></i>
+                    <span id="power-text" class="text-yellow-400 text-sm font-medium tracking-wide">SOLAR</span>
+                </div>
+                
                 <!-- Master Reset -->
                 <button onclick="masterReset()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 hover:border-red-500/50 rounded-lg text-zinc-300 hover:text-red-400 text-sm font-medium transition-all flex items-center gap-2">
                     <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
@@ -359,6 +426,105 @@
 
     <!-- Main Dashboard -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Module 0: Smart Power Manager - Full Width -->
+        <div class="lg:col-span-12 card rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center border border-yellow-500/20">
+                        <i data-lucide="zap" class="w-5 h-5 text-yellow-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-semibold text-zinc-100">Smart Power Manager</h2>
+                        <p class="text-xs text-zinc-500">Renewable Energy System</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="tooltip">
+                        <i data-lucide="info" class="w-4 h-4 text-zinc-500 cursor-help"></i>
+                        <span class="tooltip-text">Automatic switching between Solar and Battery power based on voltage threshold (4.5V)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Solar Chart -->
+                <div class="lg:col-span-2">
+                    <div class="h-48">
+                        <canvas id="powerChart"></canvas>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg border border-zinc-800 mt-3">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                <span class="text-xs text-zinc-400">Solar Voltage</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-zinc-500 border border-dashed border-zinc-400"></div>
+                                <span class="text-xs text-zinc-400">Battery Threshold (4.5V)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-zinc-500">Solar:</span>
+                            <span id="solar-voltage" class="text-sm text-yellow-400 font-medium">5.00V</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Power Status Panel -->
+                <div class="flex flex-col gap-4">
+                    <!-- Day/Night Mode -->
+                    <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                        <div class="text-xs text-zinc-500 mb-3 text-center">Power Mode</div>
+                        <div class="flex items-center justify-center gap-6">
+                            <!-- Solar Mode -->
+                            <div class="text-center">
+                                <div id="solar-led-container" class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-2 mx-auto border-2 border-zinc-700">
+                                    <i data-lucide="sun" class="w-6 h-6 text-zinc-600" id="solar-icon"></i>
+                                </div>
+                                <span class="text-[10px] text-zinc-500">SOLAR</span>
+                            </div>
+                            
+                            <!-- Battery Mode -->
+                            <div class="text-center">
+                                <div id="battery-led-container" class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-2 mx-auto border-2 border-zinc-700">
+                                    <i data-lucide="battery-medium" class="w-6 h-6 text-zinc-600" id="battery-icon"></i>
+                                </div>
+                                <span class="text-[10px] text-zinc-500">BATTERY</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Battery Status -->
+                    <div id="battery-container" class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                        <div class="flex justify-between text-xs text-zinc-500 mb-2">
+                            <span>Battery Level</span>
+                            <span id="battery-percent">75%</span>
+                        </div>
+                        <div class="h-6 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700">
+                            <div id="battery-bar" class="battery-bar h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full" style="width: 75%"></div>
+                        </div>
+                        <div id="charging-status" class="text-[10px] text-emerald-400 mt-2 text-center hidden">
+                            <i data-lucide="zap" class="w-3 h-3 inline"></i> Charging...
+                        </div>
+                    </div>
+                    
+                    <!-- Cycle Speed Control -->
+                    <div class="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
+                        <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                            <span>Day/Night Cycle Speed</span>
+                            <span id="cycle-speed-value">1x</span>
+                        </div>
+                        <input type="range" id="cycle-speed-slider" min="1" max="20" value="5" oninput="updateCycleSpeed(this.value)">
+                    </div>
+                </div>
+            </div>
+            
+            <p class="mt-4 text-[11px] text-zinc-600 italic border-t border-zinc-800 pt-3">
+                <i data-lucide="info" class="w-3 h-3 inline mr-1 text-zinc-500"></i>
+                Day Mode: Solar > 4.5V → Green LED + Charging. Night Mode: Solar < 4.5V → Battery Power. Decimal points on displays indicate "Green Energy Active".
+            </p>
+        </div>
         
         <!-- Module 1: Signal Conditioning - Spans 7 columns -->
         <div class="lg:col-span-7 card rounded-xl p-5">
@@ -433,7 +599,7 @@
                     </div>
                 </div>
                 
-                <!-- Bus Output-->
+                <!-- Bus Output -->
                 <div class="flex flex-col items-center justify-center">
                     <div class="text-xs text-zinc-500 mb-2">8-Wire Bus</div>
                     <div class="flex flex-col gap-1 p-2 bg-zinc-900 rounded border border-zinc-700">
@@ -530,7 +696,10 @@
                 <div class="text-center">
                     <div class="text-xs text-zinc-500 mb-3">Real-Time Display</div>
                     <div id="stab-display-container" class="bg-zinc-950 rounded-lg p-3 border-2 border-zinc-700">
-                        <div id="stab-display" class="seven-segment seven-segment-emerald">0</div>
+                        <div class="flex items-end justify-center">
+                            <div id="stab-display" class="seven-segment seven-segment-emerald">0</div>
+                            <div id="stab-decimal" class="decimal-point"></div>
+                        </div>
                     </div>
                     <div class="text-[10px] text-zinc-600 mt-2">(Updates on pulse)</div>
                 </div>
@@ -594,7 +763,10 @@
                 <div class="text-center">
                     <div class="text-xs text-zinc-500 mb-3">Average Display</div>
                     <div id="avg-display-container" class="bg-zinc-950 rounded-lg p-3 border-2 border-zinc-700">
-                        <div id="avg-display" class="seven-segment seven-segment-amber">0</div>
+                        <div class="flex items-end justify-center">
+                            <div id="avg-display" class="seven-segment seven-segment-amber">0</div>
+                            <div id="avg-decimal" class="decimal-point"></div>
+                        </div>
                     </div>
                     <div class="text-[10px] text-zinc-600 mt-2">(Historic snapshot)</div>
                 </div>
@@ -690,7 +862,7 @@
                 </div>
             </div>
             <div class="text-zinc-600">
-                ALII Logic Simulator v2.0 | DSP Course Project
+                ALII Logic Simulator v2.1 | DSP Course Project | Smart Power Management
             </div>
         </div>
     </footer>
@@ -720,6 +892,13 @@
             avgTimerCurrent: 0,
             avgLatchedValue: 0,
             
+            // Power Management (NEW)
+            solarVoltage: 5.0,
+            batteryLevel: 75,
+            isDayMode: true,
+            cycleSpeed: 5,
+            cyclePhase: 0,
+            
             // Simulation
             simSpeed: 1,
             lastTime: 0,
@@ -729,10 +908,68 @@
         };
 
         // ==================== CHART SETUP ====================
-        let signalChart;
+        let signalChart, powerChart;
         const chartDataPoints = 100;
 
-        function initChart() {
+        function initCharts() {
+            initSignalChart();
+            initPowerChart();
+        }
+
+        function initPowerChart() {
+            const ctx = document.getElementById('powerChart').getContext('2d');
+            powerChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(chartDataPoints).fill(''),
+                    datasets: [
+                        {
+                            label: 'Solar Voltage',
+                            data: Array(chartDataPoints).fill(5),
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Threshold',
+                            data: Array(chartDataPoints).fill(4.5),
+                            borderColor: '#71717a',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: 0,
+                            max: 7,
+                            grid: { color: 'rgba(63, 63, 70, 0.3)' },
+                            ticks: { 
+                                color: '#71717a',
+                                font: { size: 10 },
+                                callback: v => v + 'V'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function initSignalChart() {
             const ctx = document.getElementById('signalChart').getContext('2d');
             signalChart = new Chart(ctx, {
                 type: 'line',
@@ -836,6 +1073,11 @@
             document.getElementById('sim-speed-value').textContent = value + 'x';
         }
 
+        function updateCycleSpeed(value) {
+            State.cycleSpeed = parseInt(value);
+            document.getElementById('cycle-speed-value').textContent = value + 'x';
+        }
+
         function masterReset() {
             State.stabTimerCurrent = 0;
             State.avgTimerCurrent = 0;
@@ -844,6 +1086,10 @@
             
             document.getElementById('stab-display').textContent = '0';
             document.getElementById('avg-display').textContent = '0';
+            
+            // Reset power state
+            State.batteryLevel = 75;
+            State.cyclePhase = 0;
             
             Pulse('system-badge');
         }
@@ -978,6 +1224,125 @@
             }
         }
 
+        // ==================== POWER MANAGEMENT (MODULE 0) ====================
+        function updatePowerManagement(deltaTime, currentTime) {
+            // Simulate day/night cycle with sine wave
+            State.cyclePhase += (deltaTime / 1000) * State.cycleSpeed * 0.1;
+            
+            // Solar voltage: 0V (night) to 6V (peak day), using sine wave
+            const solarBase = 3 + Math.sin(State.cyclePhase) * 3;
+            State.solarVoltage = Math.max(0, Math.min(6, solarBase + (Math.random() - 0.5) * 0.2));
+            
+            // Determine day/night mode based on threshold
+            const wasDay = State.isDayMode;
+            State.isDayMode = State.solarVoltage >= 4.5;
+            
+            // Update power chart
+            powerChart.data.datasets[0].data.push(State.solarVoltage);
+            powerChart.data.datasets[0].data.shift();
+            powerChart.update('none');
+            
+            // Update solar voltage display
+            document.getElementById('solar-voltage').textContent = State.solarVoltage.toFixed(2) + 'V';
+            
+            // Update power mode indicators
+            const solarContainer = document.getElementById('solar-led-container');
+            const batteryContainer = document.getElementById('battery-led-container');
+            const solarIcon = document.getElementById('solar-icon');
+            const batteryIcon = document.getElementById('battery-icon');
+            const powerBadge = document.getElementById('power-badge');
+            const powerText = document.getElementById('power-text');
+            const powerIcon = document.getElementById('power-icon');
+            const chargingStatus = document.getElementById('charging-status');
+            const batteryBar = document.getElementById('battery-bar');
+            const batteryPercent = document.getElementById('battery-percent');
+            const batteryContainerDiv = document.getElementById('battery-container');
+            
+            if (State.isDayMode) {
+                // Day Mode - Solar Active
+                solarContainer.style.background = 'rgba(234, 179, 8, 0.2)';
+                solarContainer.style.borderColor = '#eab308';
+                solarIcon.style.color = '#eab308';
+                solarIcon.classList.add('sun-icon');
+                
+                batteryContainer.style.background = '#27272a';
+                batteryContainer.style.borderColor = '#3f3f46';
+                batteryIcon.style.color = '#52525b';
+                
+                powerBadge.style.background = 'rgba(234, 179, 8, 0.1)';
+                powerBadge.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+                powerText.textContent = 'SOLAR';
+                powerText.style.color = '#eab308';
+                powerIcon.setAttribute('data-lucide', 'sun');
+                powerIcon.style.color = '#eab308';
+                
+                // Charging animation
+                chargingStatus.classList.remove('hidden');
+                batteryContainerDiv.classList.add('charging-animation');
+                
+                // Charge battery
+                if (State.batteryLevel < 100) {
+                    State.batteryLevel = Math.min(100, State.batteryLevel + deltaTime * 0.002);
+                }
+            } else {
+                // Night Mode - Battery Active
+                solarContainer.style.background = '#27272a';
+                solarContainer.style.borderColor = '#3f3f46';
+                solarIcon.style.color = '#52525b';
+                solarIcon.classList.remove('sun-icon');
+                
+                batteryContainer.style.background = 'rgba(245, 158, 11, 0.2)';
+                batteryContainer.style.borderColor = '#f59e0b';
+                batteryIcon.style.color = '#f59e0b';
+                
+                powerBadge.style.background = 'rgba(245, 158, 11, 0.1)';
+                powerBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                powerText.textContent = 'BATTERY';
+                powerText.style.color = '#f59e0b';
+                powerIcon.setAttribute('data-lucide', 'battery-medium');
+                powerIcon.style.color = '#f59e0b';
+                
+                // No charging
+                chargingStatus.classList.add('hidden');
+                batteryContainerDiv.classList.remove('charging-animation');
+                
+                // Drain battery
+                if (State.batteryLevel > 0) {
+                    State.batteryLevel = Math.max(0, State.batteryLevel - deltaTime * 0.001);
+                }
+            }
+            
+            // Update battery bar
+            batteryBar.style.width = State.batteryLevel + '%';
+            batteryPercent.textContent = Math.floor(State.batteryLevel) + '%';
+            
+            // Battery color based on level
+            if (State.batteryLevel < 20) {
+                batteryBar.style.background = 'linear-gradient(to right, #ef4444, #f87171)';
+            } else if (State.batteryLevel < 50) {
+                batteryBar.style.background = 'linear-gradient(to right, #f59e0b, #fbbf24)';
+            } else {
+                batteryBar.style.background = 'linear-gradient(to right, #059669, #10b981)';
+            }
+            
+            // Update decimal points on displays (Green Energy indicator)
+            const stabDecimal = document.getElementById('stab-decimal');
+            const avgDecimal = document.getElementById('avg-decimal');
+            
+            if (State.isDayMode) {
+                stabDecimal.classList.add('active');
+                avgDecimal.classList.add('active');
+            } else {
+                stabDecimal.classList.remove('active');
+                avgDecimal.classList.remove('active');
+            }
+            
+            // Re-initialize Lucide icons if mode changed
+            if (wasDay !== State.isDayMode) {
+                lucide.createIcons();
+            }
+        }
+
         // ==================== MAIN ANIMATION LOOP ====================
         function animate(currentTime) {
             const deltaTime = currentTime - State.lastTime;
@@ -992,6 +1357,7 @@
             document.getElementById('frame-counter').textContent = State.frameCount;
             
             // Update all modules
+            updatePowerManagement(deltaTime, currentTime);
             updateSignal(currentTime);
             updateADC();
             updateStabilityLogic(deltaTime);
@@ -1002,7 +1368,7 @@
 
         // ==================== INITIALIZATION ====================
         function init() {
-            initChart();
+            initCharts();
             requestAnimationFrame(animate);
         }
 
@@ -1010,4 +1376,3 @@
     </script>
 </body>
 </html>
-
