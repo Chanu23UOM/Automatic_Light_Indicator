@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALII Logic Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --emerald-glow: 0 0 20px rgba(16, 185, 129, 0.6);
+            --amber-glow: 0 0 20px rgba(245, 158, 11, 0.6);
+            --red-glow: 0 0 15px rgba(239, 68, 68, 0.5);
+            --pulse-glow: 0 0 30px rgba(16, 185, 129, 1);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #09090b;
+            background-image: 
+                radial-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.02) 1px, transparent 1px),
+                linear-gradient(rgba(16, 185, 129, 0.02) 1px, transparent 1px);
+            background-size: 20px 20px, 40px 40px, 40px 40px;
+            min-height: 100vh;
+        }
+        
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .card {
+            background: linear-gradient(145deg, rgba(24, 24, 27, 0.95), rgba(9, 9, 11, 0.98));
+            border: 1px solid rgba(63, 63, 70, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #10b981, transparent);
+            opacity: 0.5;
+        }
+        
+        .card:hover {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        /* LED Styles */
+        .led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: all 0.1s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .led-off {
+            background: radial-gradient(circle at 30% 30%, #3f3f46, #18181b);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .led-on {
+            background: radial-gradient(circle at 30% 30%, #34d399, #10b981);
+            box-shadow: 0 0 8px #10b981, 0 0 16px #10b981, inset 0 0 4px rgba(255,255,255,0.4);
+        }
+        
+        .led-amber {
+            background: radial-gradient(circle at 30% 30%, #fbbf24, #f59e0b);
+            box-shadow: 0 0 8px #f59e0b, 0 0 16px #f59e0b, inset 0 0 4px rgba(255,255,255,0.4);
+        }
+        
+        .led-red {
+            background: radial-gradient(circle at 30% 30%, #f87171, #ef4444);
+            box-shadow: 0 0 8px #ef4444, 0 0 16px #ef4444, inset 0 0 4px rgba(255,255,255,0.4);
+        }
+        
+        /* Comparator Ladder */
+        .comparator {
+            height: 28px;
+            background: linear-gradient(90deg, #27272a, #18181b);
+            border: 1px solid #3f3f46;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+        
+        .comparator.active {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1));
+            border-color: #10b981;
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+        
+        .comparator.active::after {
+            content: '';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+        }
+        
+        /* Seven Segment Display */
+        .seven-segment {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+        
+        .seven-segment-emerald {
+            color: #10b981;
+            text-shadow: 0 0 10px #10b981, 0 0 20px #10b981, 0 0 40px rgba(16, 185, 129, 0.5);
+        }
+        
+        .seven-segment-amber {
+            color: #f59e0b;
+            text-shadow: 0 0 10px #f59e0b, 0 0 20px #f59e0b, 0 0 40px rgba(245, 158, 11, 0.5);
+        }
+        
+        /* Progress Ring */
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.1s;
+            transform-origin: 50% 50%;
+        }
+        
+        /* Bus Wire Animation */
+        .bus-wire {
+            stroke: #3f3f46;
+            stroke-width: 2;
+        }
+        
+        .bus-wire.active {
+            stroke: #10b981;
+            filter: drop-shadow(0 0 4px #10b981);
+        }
+        
+        /* Pulse Animation */
+        .pulse-flash {
+            animation: pulseFlash 0.4s ease-out;
+        }
+        
+        @keyframes pulseFlash {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px 10px rgba(16, 185, 129, 0.6);
+                transform: scale(1.02);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                transform: scale(1);
+            }
+        }
+        
+        .clock-pulse {
+            animation: clockPulse 0.3s ease-out;
+        }
+        
+        @keyframes clockPulse {
+            0% { background: #10b981; box-shadow: 0 0 30px #10b981; }
+            100% { background: transparent; box-shadow: none; }
+        }
+        
+        /* Logic Block */
+        .logic-block {
+            background: linear-gradient(145deg, #1f1f23, #0f0f11);
+            border: 2px solid #3f3f46;
+            position: relative;
+        }
+        
+        .logic-block.triggered {
+            border-color: #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+        
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #27272a;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #3f3f46;
+        }
+        
+        .toggle-switch.active {
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #e4e4e7;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .toggle-switch.active::after {
+            left: 26px;
+        }
+        
+        /* Custom Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+        }
+        
+        input[type="range"]::-webkit-slider-track {
+            height: 6px;
+            background: #27272a;
+            border-radius: 3px;
+            border: 1px solid #3f3f46;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(145deg, #10b981, #059669);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 8px #10b981;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #18181b;
+            color: #a1a1aa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            border: 1px solid #3f3f46;
+            z-index: 100;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Data Flow Lines */
+        .data-flow {
+            position: relative;
+        }
+        
+        .data-flow::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: repeating-linear-gradient(
+                to bottom,
+                #10b981 0px,
+                #10b981 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            animation: flowDown 0.5s linear infinite;
+        }
+        
+        @keyframes flowDown {
+            from { background-position: 0 0; }
+            to { background-position: 0 8px; }
+        }
+        
+        /* Schematic connector styles */
+        .connector-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 6px #10b981;
+        }
+    </style>
+</head>
+<body class="text-zinc-300 p-3 md:p-5">
+    
+    <!-- Header -->
+    <header class="card rounded-xl p-4 mb-5">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 rounded-lg flex items-center justify-center border border-emerald-500/30">
+                        <i data-lucide="cpu" class="w-7 h-7 text-emerald-400"></i>
+                    </div>
+                    <div class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                </div>
+                <div>
+                    <h1 class="orbitron text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider">
+                        ALII LOGIC SIMULATOR
+                    </h1>
+                    <p class="text-zinc-500 text-xs tracking-widest uppercase">Advanced Light Intensity Indicator</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- System Status Badge -->
+                <div id="system-badge" class="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-emerald-400 text-sm font-medium tracking-wide">SYSTEM ACTIVE</span>
+                </div>
+                
+                <!-- Master Reset -->
+                <button onclick="masterReset()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 hover:border-red-500/50 rounded-lg text-zinc-300 hover:text-red-400 text-sm font-medium transition-all flex items-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    Master Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Module 1: Signal Conditioning - Spans 7 columns -->
+        <div class="lg:col-span-7 card rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
+                        <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-semibold text-zinc-100">Signal Conditioning</h2>
+                        <p class="text-xs text-zinc-500">Sallen-Key Low-Pass Filter</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <div class="tooltip">
+                        <i data-lucide="info" class="w-4 h-4 text-zinc-500 cursor-help"></i>
+                        <span class="tooltip-text">2nd-Order Active Low-Pass Filter removing high-frequency line noise (fc ≈ 10Hz)</span>
+                    </div>
+                    <span class="text-xs text-zinc-500">Inject Noise</span>
+                    <div id="noise-toggle" class="toggle-switch" onclick="toggleNoise()"></div>
+                </div>
+            </div>
+            
+            <div class="h-56 mb-4">
+                <canvas id="signalChart"></canvas>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                        <span class="text-xs text-zinc-400">Raw LDR Input</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <span class="text-xs text-zinc-400">Filtered Output</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-zinc-500">Output:</span>
+                    <span id="filter-output" class="text-sm text-emerald-400 font-medium">2.50V</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module 2: Flash ADC - Spans 5 columns -->
+        <div class="lg:col-span-5 card rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
+                    <i data-lucide="git-branch" class="w-5 h-5 text-amber-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-zinc-100">Flash ADC</h2>
+                    <p class="text-xs text-zinc-500">8-Level Comparator Ladder</p>
+                </div>
+            </div>
+            
+            <!-- Comparator Ladder -->
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    <div class="text-xs text-zinc-500 mb-2 text-center">Comparators (V<sub>ref</sub>)</div>
+                    <div class="flex flex-col gap-1">
+                        <div id="comp-7" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C7: 4.375V</span></div>
+                        <div id="comp-6" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C6: 3.750V</span></div>
+                        <div id="comp-5" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C5: 3.125V</span></div>
+                        <div id="comp-4" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C4: 2.500V</span></div>
+                        <div id="comp-3" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C3: 1.875V</span></div>
+                        <div id="comp-2" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C2: 1.250V</span></div>
+                        <div id="comp-1" class="comparator rounded flex items-center px-3"><span class="text-xs text-zinc-500">C1: 0.625V</span></div>
+                        <div id="comp-0" class="comparator rounded flex items-center px-3 active"><span class="text-xs text-zinc-500">C0: 0.000V</span></div>
+                    </div>
+                </div>
+                
+                <!-- Bus Output -->
+                <div class="flex flex-col items-center justify-center">
+                    <div class="text-xs text-zinc-500 mb-2">8-Wire Bus</div>
+                    <div class="flex flex-col gap-1 p-2 bg-zinc-900 rounded border border-zinc-700">
+                        <div id="bus-7" class="led led-off"></div>
+                        <div id="bus-6" class="led led-off"></div>
+                        <div id="bus-5" class="led led-off"></div>
+                        <div id="bus-4" class="led led-off"></div>
+                        <div id="bus-3" class="led led-off"></div>
+                        <div id="bus-2" class="led led-off"></div>
+                        <div id="bus-1" class="led led-off"></div>
+                        <div id="bus-0" class="led led-on"></div>
+                    </div>
+                    
+                    <!-- Split indicator -->
+                    <div class="mt-3 flex flex-col items-center">
+                        <div class="connector-dot"></div>
+                        <div class="w-0.5 h-4 bg-emerald-500/50"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-center">
+                                <div class="w-4 h-0.5 bg-emerald-500/50"></div>
+                                <span class="text-[10px] text-zinc-500 mt-1">Path A</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="w-4 h-0.5 bg-amber-500/50"></div>
+                                <span class="text-[10px] text-zinc-500 mt-1">Path B</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Digital Output -->
+            <div class="mt-4 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800 flex items-center justify-between">
+                <span class="text-xs text-zinc-500">Digital Level:</span>
+                <span id="adc-level" class="orbitron text-xl text-emerald-400">0</span>
+            </div>
+        </div>
+
+        <!-- Module 3: Stability Logic (Path A) - Spans 6 columns -->
+        <div class="lg:col-span-6 card rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
+                        <i data-lucide="lock" class="w-5 h-5 text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-semibold text-zinc-100">Stability Logic</h2>
+                        <p class="text-xs text-zinc-500">Path A • Short-Term Latch</p>
+                    </div>
+                </div>
+                <div class="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-400">PATH A</div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4">
+                <!-- Input LEDs -->
+                <div class="text-center">
+                    <div class="text-xs text-zinc-500 mb-3">Live ADC Bus</div>
+                    <div class="inline-grid grid-cols-4 gap-1 p-2 bg-zinc-900 rounded border border-zinc-700">
+                        <div id="stab-in-7" class="led led-off"></div>
+                        <div id="stab-in-6" class="led led-off"></div>
+                        <div id="stab-in-5" class="led led-off"></div>
+                        <div id="stab-in-4" class="led led-off"></div>
+                        <div id="stab-in-3" class="led led-off"></div>
+                        <div id="stab-in-2" class="led led-off"></div>
+                        <div id="stab-in-1" class="led led-off"></div>
+                        <div id="stab-in-0" class="led led-on"></div>
+                    </div>
+                    <div class="text-[10px] text-zinc-600 mt-2">(May flicker)</div>
+                </div>
+                
+                <!-- Logic Block with Timer -->
+                <div class="flex flex-col items-center">
+                    <div id="stab-logic-block" class="logic-block rounded-lg p-3 w-full text-center mb-3">
+                        <div class="text-[10px] text-zinc-500 mb-1">D-FLIP-FLOP</div>
+                        <div class="text-xs text-emerald-400 font-medium">BANK (x8)</div>
+                        <div id="stab-pulse-indicator" class="w-full h-1 rounded mt-2 bg-zinc-700"></div>
+                    </div>
+                    
+                    <!-- Circular Timer -->
+                    <div class="relative">
+                        <svg class="progress-ring w-20 h-20" viewBox="0 0 80 80">
+                            <circle class="text-zinc-800" stroke="currentColor" stroke-width="6" fill="transparent" r="34" cx="40" cy="40"/>
+                            <circle id="stab-timer-ring" class="progress-ring__circle text-emerald-500" stroke="currentColor" stroke-width="6" fill="transparent" r="34" cx="40" cy="40" stroke-linecap="round" stroke-dasharray="213.628" stroke-dashoffset="213.628"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="stab-timer-text" class="text-lg font-bold text-emerald-400">30</span>
+                            <span class="text-[9px] text-zinc-500">SEC</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-zinc-500 mt-1">Stability Timer</div>
+                </div>
+                
+                <!-- Output Display -->
+                <div class="text-center">
+                    <div class="text-xs text-zinc-500 mb-3">Real-Time Display</div>
+                    <div id="stab-display-container" class="bg-zinc-950 rounded-lg p-3 border-2 border-zinc-700">
+                        <div id="stab-display" class="seven-segment seven-segment-emerald">0</div>
+                    </div>
+                    <div class="text-[10px] text-zinc-600 mt-2">(Updates on pulse)</div>
+                </div>
+            </div>
+            
+            <p class="mt-4 text-[11px] text-zinc-600 italic border-t border-zinc-800 pt-3">
+                <i data-lucide="info" class="w-3 h-3 inline mr-1 text-zinc-500"></i>
+                Prevents display jitter by latching data only after a stability interval.
+            </p>
+        </div>
+
+        <!-- Module 4: Averaging Logic (Path B) - Spans 6 columns -->
+        <div class="lg:col-span-6 card rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
+                        <i data-lucide="database" class="w-5 h-5 text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-semibold text-zinc-100">Averaging Logic</h2>
+                        <p class="text-xs text-zinc-500">Path B • Long-Term Latch</p>
+                    </div>
+                </div>
+                <div class="px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">PATH B</div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4">
+                <!-- Input -->
+                <div class="text-center">
+                    <div class="text-xs text-zinc-500 mb-3">ADC Bus Input</div>
+                    <div class="inline-grid grid-cols-4 gap-1 p-2 bg-zinc-900 rounded border border-zinc-700">
+                        <div id="avg-in-7" class="led led-off"></div>
+                        <div id="avg-in-6" class="led led-off"></div>
+                        <div id="avg-in-5" class="led led-off"></div>
+                        <div id="avg-in-4" class="led led-off"></div>
+                        <div id="avg-in-3" class="led led-off"></div>
+                        <div id="avg-in-2" class="led led-off"></div>
+                        <div id="avg-in-1" class="led led-off"></div>
+                        <div id="avg-in-0" class="led led-amber"></div>
+                    </div>
+                    <div id="avg-input-value" class="orbitron text-sm text-amber-400 mt-2">0</div>
+                </div>
+                
+                <!-- Logic Block -->
+                <div class="flex flex-col items-center">
+                    <div id="avg-logic-block" class="logic-block rounded-lg p-3 w-full text-center mb-3">
+                        <div class="text-[10px] text-zinc-500 mb-1">AVERAGING</div>
+                        <div class="text-xs text-amber-400 font-medium">MEMORY (D-FF)</div>
+                        <div id="avg-pulse-indicator" class="w-full h-1 rounded mt-2 bg-zinc-700"></div>
+                    </div>
+                    
+                    <!-- Clock indicator -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                        <span class="text-xs text-zinc-500">CLK</span>
+                        <div id="avg-clock-led" class="led led-off"></div>
+                    </div>
+                </div>
+                
+                <!-- Output Display -->
+                <div class="text-center">
+                    <div class="text-xs text-zinc-500 mb-3">Average Display</div>
+                    <div id="avg-display-container" class="bg-zinc-950 rounded-lg p-3 border-2 border-zinc-700">
+                        <div id="avg-display" class="seven-segment seven-segment-amber">0</div>
+                    </div>
+                    <div class="text-[10px] text-zinc-600 mt-2">(Historic snapshot)</div>
+                </div>
+            </div>
+            
+            <!-- Horizontal Progress Bar -->
+            <div class="mt-4">
+                <div class="flex justify-between text-xs text-zinc-500 mb-2">
+                    <span>Averaging Timer</span>
+                    <span id="avg-timer-text">0 / 900s</span>
+                </div>
+                <div class="h-5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-700 relative">
+                    <div id="avg-timer-bar" class="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-100" style="width: 0%"></div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="avg-timer-percent" class="text-[10px] font-bold text-zinc-200">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="mt-4 text-[11px] text-zinc-600 italic border-t border-zinc-800 pt-3">
+                <i data-lucide="info" class="w-3 h-3 inline mr-1 text-zinc-500"></i>
+                Samples the light intensity at long intervals to provide a historic snapshot.
+            </p>
+        </div>
+
+        <!-- Control Panel - Full Width -->
+        <div class="lg:col-span-12 card rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-zinc-700/30 rounded-lg flex items-center justify-center border border-zinc-600/30">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-zinc-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-zinc-100">Simulation Controls</h2>
+                    <p class="text-xs text-zinc-500">Adjust parameters in real-time</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Light Intensity -->
+                <div>
+                    <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                        <span>Light Intensity (LDR)</span>
+                        <span id="light-value">50%</span>
+                    </div>
+                    <input type="range" id="light-slider" min="0" max="100" value="50" oninput="updateLight(this.value)">
+                </div>
+                
+                <!-- Stability Timer -->
+                <div>
+                    <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                        <span>Stability Timer</span>
+                        <span id="stab-timer-value">30s</span>
+                    </div>
+                    <input type="range" id="stab-timer-slider" min="10" max="60" value="30" oninput="updateStabTimer(this.value)">
+                </div>
+                
+                <!-- Averaging Timer -->
+                <div>
+                    <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                        <span>Averaging Timer</span>
+                        <span id="avg-timer-value">900s (Demo: 9s)</span>
+                    </div>
+                    <input type="range" id="avg-timer-slider" min="300" max="900" value="900" oninput="updateAvgTimer(this.value)">
+                </div>
+                
+                <!-- Simulation Speed -->
+                <div>
+                    <div class="flex justify-between text-xs text-zinc-400 mb-2">
+                        <span>Simulation Speed</span>
+                        <span id="sim-speed-value">1x</span>
+                    </div>
+                    <input type="range" id="sim-speed-slider" min="1" max="10" value="1" oninput="updateSimSpeed(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="card rounded-xl p-3 mt-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-zinc-500">Simulation Running</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-zinc-600">FPS:</span>
+                    <span id="fps-counter" class="text-emerald-400 font-medium">60</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-zinc-600">Frame:</span>
+                    <span id="frame-counter" class="text-zinc-400">0</span>
+                </div>
+            </div>
+            <div class="text-zinc-600">
+                ALII Logic Simulator v2.0 | DSP Course Project
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // ==================== GLOBAL STATE ====================
+        const State = {
+            // Signal
+            noiseEnabled: false,
+            lightIntensity: 50,
+            filteredVoltage: 2.5,
+            
+            // ADC
+            adcLevel: 0,
+            busState: [1, 0, 0, 0, 0, 0, 0, 0],
+            
+            // Stability Logic (Path A)
+            stabTimerMax: 30,
+            stabTimerCurrent: 0,
+            stabLatchedValue: 0,
+            
+            // Averaging Logic (Path B)
+            avgTimerMax: 900,
+            avgTimerCurrent: 0,
+            avgLatchedValue: 0,
+            
+            // Simulation
+            simSpeed: 1,
+            lastTime: 0,
+            frameCount: 0,
+            fps: 60,
+            flickerCounter: 0
+        };
+
+        // ==================== CHART SETUP ====================
+        let signalChart;
+        const chartDataPoints = 100;
+
+        function initChart() {
+            const ctx = document.getElementById('signalChart').getContext('2d');
+            signalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(chartDataPoints).fill(''),
+                    datasets: [
+                        {
+                            label: 'Raw LDR',
+                            data: Array(chartDataPoints).fill(2.5),
+                            borderColor: 'rgba(239, 68, 68, 0.5)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.2,
+                            fill: true
+                        },
+                        {
+                            label: 'Filtered',
+                            data: Array(chartDataPoints).fill(2.5),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: 0,
+                            max: 5,
+                            grid: { color: 'rgba(63, 63, 70, 0.3)' },
+                            ticks: { 
+                                color: '#71717a',
+                                font: { size: 10 },
+                                callback: v => v + 'V'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // ==================== PULSE ANIMATION ====================
+        function Pulse(targetId) {
+            const element = document.getElementById(targetId);
+            if (element) {
+                element.classList.add('pulse-flash');
+                setTimeout(() => element.classList.remove('pulse-flash'), 400);
+            }
+        }
+
+        function triggerLogicBlock(blockId, pulseId) {
+            const block = document.getElementById(blockId);
+            const pulse = document.getElementById(pulseId);
+            
+            block.classList.add('triggered');
+            pulse.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+            pulse.style.boxShadow = '0 0 10px #10b981';
+            
+            setTimeout(() => {
+                block.classList.remove('triggered');
+                pulse.style.background = '';
+                pulse.style.boxShadow = '';
+            }, 300);
+        }
+
+        // ==================== CONTROL FUNCTIONS ====================
+        function toggleNoise() {
+            State.noiseEnabled = !State.noiseEnabled;
+            document.getElementById('noise-toggle').classList.toggle('active', State.noiseEnabled);
+        }
+
+        function updateLight(value) {
+            State.lightIntensity = parseInt(value);
+            document.getElementById('light-value').textContent = value + '%';
+        }
+
+        function updateStabTimer(value) {
+            State.stabTimerMax = parseInt(value);
+            document.getElementById('stab-timer-value').textContent = value + 's';
+        }
+
+        function updateAvgTimer(value) {
+            State.avgTimerMax = parseInt(value);
+            document.getElementById('avg-timer-value').textContent = `${value}s (Demo: ${value/100}s)`;
+        }
+
+        function updateSimSpeed(value) {
+            State.simSpeed = parseInt(value);
+            document.getElementById('sim-speed-value').textContent = value + 'x';
+        }
+
+        function masterReset() {
+            State.stabTimerCurrent = 0;
+            State.avgTimerCurrent = 0;
+            State.stabLatchedValue = 0;
+            State.avgLatchedValue = 0;
+            
+            document.getElementById('stab-display').textContent = '0';
+            document.getElementById('avg-display').textContent = '0';
+            
+            Pulse('system-badge');
+        }
+
+        // ==================== SIGNAL PROCESSING ====================
+        function updateSignal(time) {
+            const baseVoltage = (State.lightIntensity / 100) * 4.5 + 0.25;
+            
+            // Raw signal with noise
+            let rawSignal = baseVoltage;
+            if (State.noiseEnabled) {
+                const noise50Hz = Math.sin(time * 0.05) * 0.6;
+                const noise100Hz = Math.sin(time * 0.1) * 0.25;
+                const randomNoise = (Math.random() - 0.5) * 0.4;
+                rawSignal = baseVoltage + noise50Hz + noise100Hz + randomNoise;
+            } else {
+                rawSignal = baseVoltage + (Math.random() - 0.5) * 0.1;
+            }
+            
+            // Filtered signal (smooth)
+            State.filteredVoltage = baseVoltage + (Math.random() - 0.5) * 0.02;
+            
+            // Update chart
+            signalChart.data.datasets[0].data.push(Math.max(0, Math.min(5, rawSignal)));
+            signalChart.data.datasets[0].data.shift();
+            signalChart.data.datasets[1].data.push(State.filteredVoltage);
+            signalChart.data.datasets[1].data.shift();
+            signalChart.update('none');
+            
+            document.getElementById('filter-output').textContent = State.filteredVoltage.toFixed(2) + 'V';
+        }
+
+        // ==================== ADC LOGIC ====================
+        function updateADC() {
+            // Convert voltage to level (0-7)
+            State.adcLevel = Math.min(7, Math.floor((State.filteredVoltage / 5) * 8));
+            
+            // Update comparators
+            for (let i = 0; i <= 7; i++) {
+                const comp = document.getElementById(`comp-${i}`);
+                const threshold = (i / 8) * 5;
+                comp.classList.toggle('active', State.filteredVoltage >= threshold);
+            }
+            
+            // Update bus state
+            State.busState = Array(8).fill(0);
+            for (let i = 0; i <= State.adcLevel; i++) {
+                State.busState[i] = 1;
+            }
+            
+            // Update bus LEDs
+            for (let i = 0; i < 8; i++) {
+                const led = document.getElementById(`bus-${i}`);
+                led.className = `led ${State.busState[i] ? 'led-on' : 'led-off'}`;
+            }
+            
+            document.getElementById('adc-level').textContent = State.adcLevel;
+        }
+
+        // ==================== STABILITY LOGIC (PATH A) ====================
+        function updateStabilityLogic(deltaTime) {
+            // Update input LEDs (with flicker if noise)
+            State.flickerCounter++;
+            const flicker = State.noiseEnabled && State.flickerCounter % 3 === 0;
+            
+            for (let i = 0; i < 8; i++) {
+                const led = document.getElementById(`stab-in-${i}`);
+                let isOn = State.busState[i];
+                if (flicker && Math.random() < 0.3) {
+                    isOn = !isOn;
+                }
+                led.className = `led ${isOn ? 'led-on' : 'led-off'}`;
+            }
+            
+            // Timer progress
+            State.stabTimerCurrent += (deltaTime / 1000) * State.simSpeed;
+            
+            const progress = (State.stabTimerCurrent / State.stabTimerMax) * 100;
+            const circumference = 2 * Math.PI * 34;
+            const offset = circumference - (progress / 100) * circumference;
+            
+            document.getElementById('stab-timer-ring').style.strokeDashoffset = offset;
+            document.getElementById('stab-timer-text').textContent = Math.max(0, Math.ceil(State.stabTimerMax - State.stabTimerCurrent));
+            
+            // Latch trigger
+            if (State.stabTimerCurrent >= State.stabTimerMax) {
+                State.stabTimerCurrent = 0;
+                State.stabLatchedValue = State.adcLevel;
+                
+                // Trigger animations
+                triggerLogicBlock('stab-logic-block', 'stab-pulse-indicator');
+                Pulse('stab-display-container');
+                
+                document.getElementById('stab-display').textContent = State.stabLatchedValue;
+            }
+        }
+
+        // ==================== AVERAGING LOGIC (PATH B) ====================
+        function updateAveragingLogic(deltaTime) {
+            // Update input LEDs
+            for (let i = 0; i < 8; i++) {
+                const led = document.getElementById(`avg-in-${i}`);
+                led.className = `led ${State.busState[i] ? 'led-amber' : 'led-off'}`;
+            }
+            document.getElementById('avg-input-value').textContent = State.adcLevel;
+            
+            // Timer progress (scaled for demo: 900s -> 9s)
+            const scaledMax = State.avgTimerMax / 100;
+            State.avgTimerCurrent += (deltaTime / 1000) * State.simSpeed;
+            
+            const progress = (State.avgTimerCurrent / scaledMax) * 100;
+            
+            document.getElementById('avg-timer-bar').style.width = Math.min(100, progress) + '%';
+            document.getElementById('avg-timer-percent').textContent = Math.min(100, Math.floor(progress)) + '%';
+            document.getElementById('avg-timer-text').textContent = `${Math.floor(State.avgTimerCurrent * 100)} / ${State.avgTimerMax}s`;
+            
+            // Latch trigger
+            if (State.avgTimerCurrent >= scaledMax) {
+                State.avgTimerCurrent = 0;
+                State.avgLatchedValue = State.adcLevel;
+                
+                // Trigger animations
+                triggerLogicBlock('avg-logic-block', 'avg-pulse-indicator');
+                Pulse('avg-display-container');
+                
+                // Clock pulse LED
+                const clockLed = document.getElementById('avg-clock-led');
+                clockLed.className = 'led led-amber';
+                setTimeout(() => clockLed.className = 'led led-off', 200);
+                
+                document.getElementById('avg-display').textContent = State.avgLatchedValue;
+            }
+        }
+
+        // ==================== MAIN ANIMATION LOOP ====================
+        function animate(currentTime) {
+            const deltaTime = currentTime - State.lastTime;
+            State.lastTime = currentTime;
+            
+            // FPS calculation
+            State.frameCount++;
+            if (State.frameCount % 30 === 0) {
+                State.fps = Math.round(1000 / deltaTime);
+                document.getElementById('fps-counter').textContent = State.fps;
+            }
+            document.getElementById('frame-counter').textContent = State.frameCount;
+            
+            // Update all modules
+            updateSignal(currentTime);
+            updateADC();
+            updateStabilityLogic(deltaTime);
+            updateAveragingLogic(deltaTime);
+            
+            requestAnimationFrame(animate);
+        }
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            initChart();
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
