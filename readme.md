@@ -33,6 +33,47 @@ This technical report documents the complete design, implementation, and operati
 - All displays functional with LED indicators for debugging
 
 ---
+<br>
+
+### 📸 Project Visuals
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="images/1.png" alt="Visual 1" width="100%">
+      <br>
+      <b>1. Analog Filtering Stage</b>
+    </td>
+    <td align="center" width="33%">
+      <img src="images/2.png" alt="Visual 2" width="100%">
+      <br>
+      <b>2. ADC & Real-time Display</b>
+    </td>
+    <td align="center" width="33%">
+      <img src="images/3.png" alt="Visual 3" width="100%">
+      <br>
+      <b>3. Stability Detection System</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="images/4.png" alt="Visual 4" width="100%">
+      <br>
+      <b>4. Averaging System Logic</b>
+    </td>
+    <td align="center" width="33%">
+      <img src="images/5.png" alt="Visual 5" width="100%">
+      <br>
+      <b>5. Full System Integration</b>
+    </td>
+    <td align="center" width="33%">
+      <br><br>
+      🏁 <b>End of Gallery</b>
+    </td>
+  </tr>
+</table>
+
+<br>
 
 ## 2. Introduction
 
@@ -856,4 +897,5 @@ For reference in the simulation file:
 **Document Version:** 1.0  
 **Date:** October 2025  
 **Authors:** DSP Project Team
+
 
